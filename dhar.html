@@ -1,0 +1,250 @@
+[<!DOCTYPE html>
+<html>
+<head>
+    <title>Restaurant Billing</title>
+    <style>
+        body {
+            font-family: monospace;
+            background-color: rgb(7, 7, 7);
+            color: #e5aa14;
+            padding: 20px;
+        }
+
+        button {
+            background: #eaecea;
+            border: none;
+            padding: 6px 12px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #e2f704;
+        }
+
+        button:disabled {
+            background: grey;
+            cursor: not-allowed;
+        }
+
+        #qrSection {
+            margin-top: 20px;
+            display: block; /* Menu QR always visible */
+        }
+
+        .qrBox {
+            display: inline-block;
+            margin-right: 20px;
+        }
+
+        select {
+            padding: 4px;
+            margin-left: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <img src="dude.jpg.jpeg" width="450px" height="350px" >
+    
+<pre>
+
+    
+==============================================================
+Item            Price        Order
+==============================================================
+1. Chicken      ₹250   <button id="btnChicken" onclick="addItem('Chicken',250)">Order</button>
+2. Biryani      ₹180   <button id="btnBiryani" onclick="addItem('Biryani',180)">Order</button>
+3. FriedRice    ₹120   <button id="btnFriedRice" onclick="addItem('FriedRice',120)">Order</button>
+4. IceCream     ₹60    <button id="btnIceCream" onclick="addItem('IceCream',60)">Order</button>
+==============================================================
+</pre>
+
+<p>Total: ₹<span id="total">0</span></p>
+
+<p>Inventory:</p>
+<ul id="inventoryList"></ul>
+
+<button onclick="cancelItem()">Cancel Last Item</button>
+<button onclick="cancelAllItems()">Cancel All Items</button>
+<button onclick="exitApp()">Exit</button>
+
+<div id="qrSection">
+    <h3>Scan QR 📲</h3>
+    <div class="qrBox">
+        <h4>Menu Website</h4>
+        <div id="qrcodeWebsite"></div>
+    </div>
+    <div class="qrBox">
+        <h4>Pay Total Amount</h4>
+        <div id="qrcodePayment"></div>
+        <p>
+            <label for="paymentMethod">Choose Payment: </label>
+            <select id="paymentMethod">
+                <option value="">--Select--</option>
+                <option value="cash">Cash 💵</option>
+                <option value="online">Online 💳</option>
+            </select>
+            <button onclick="processPayment()">Pay</button>
+        </p>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+// Inventory
+let inventory = {
+    Chicken: 10,
+    Biryani: 8,
+    FriedRice: 12,
+    IceCream: 15
+};
+
+// Cart & total
+let selectedItems = [];
+let total = 0;
+
+// Always generate Menu Website QR
+new QRCode(document.getElementById("qrcodeWebsite"), {
+    text: "https://k-dayanand.github.io/restaurant-menu/",
+    width: 150,
+    height: 150
+});
+
+// Add item
+function addItem(name, price) {
+    if (inventory[name] <= 0) {
+        alert(name + " is out of stock! ❌");
+        return;
+    }
+
+    total += price;
+    selectedItems.push({ name: name, price: price });
+    inventory[name]--;
+    document.getElementById("total").innerText = total;
+    updateInventoryDisplay();
+    updateButtons();
+}
+
+// Cancel last item
+function cancelItem() {
+    if (selectedItems.length === 0) {
+        alert("No items to cancel!");
+        return;
+    }
+    let removedItem = selectedItems.pop();
+    total -= removedItem.price;
+    inventory[removedItem.name]++;
+    document.getElementById("total").innerText = total;
+    updateInventoryDisplay();
+    updateButtons();
+    alert(removedItem.name + " removed ❌");
+}
+
+// Cancel all items
+function cancelAllItems() {
+    if (selectedItems.length === 0) {
+        alert("No items to cancel!");
+        return;
+    }
+
+    selectedItems.forEach(item => {
+        inventory[item.name]++;
+    });
+
+    selectedItems = [];
+    total = 0;
+    document.getElementById("total").innerText = total;
+    updateInventoryDisplay();
+    updateButtons();
+    alert("All items removed ❌");
+}
+
+// Payment using dropdown
+function processPayment() {
+    if (selectedItems.length === 0) {
+        alert("Please select at least one item!");
+        return;
+    }
+
+    let method = document.getElementById("paymentMethod").value;
+    if (!method) {
+        alert("Please select a payment method!");
+        return;
+    }
+
+    let receipt = "Order Successful ✅\n";
+    receipt += "========================\n\n";
+
+    selectedItems.forEach(item => {
+        receipt += item.name + " - ₹" + item.price + "\n";
+    });
+
+    receipt += "\n------------------------\n";
+    receipt += "Total Amount: ₹" + total;
+
+    if (method === "cash") {
+        alert(receipt + "\n\nYou chose Cash 💵");
+        document.getElementById("qrcodePayment").innerHTML = "";
+
+    } else if (method === "online") {
+        alert(receipt + "\n\nYou chose Online 💳");
+
+        // Generate Payment QR
+        document.getElementById("qrcodePayment").innerHTML = "";
+        let upiLink = `upi://pay?pa=yourupiid@upi&pn=HotelABC&tn=FoodPayment&am=${total}&cu=INR`;
+        new QRCode(document.getElementById("qrcodePayment"), {
+            text: upiLink,
+            width: 150,
+            height: 150
+        });
+    }
+
+    // Reset cart & dropdown
+    selectedItems = [];
+    total = 0;
+    document.getElementById("total").innerText = total;
+    updateInventoryDisplay();
+    updateButtons();
+    document.getElementById("paymentMethod").value = "";
+}
+
+// Exit button with payment check
+function exitApp() {
+    if (selectedItems.length > 0) {
+        alert("⚠️ You have not completed payment! Please pay before exiting.");
+        return;
+    }
+    alert("Thank you! Visit again 😊");
+    window.location.href = "about:blank";
+}
+
+// Update inventory display
+function updateInventoryDisplay() {
+    let list = document.getElementById("inventoryList");
+    list.innerHTML = "";
+    for (let item in inventory) {
+        let li = document.createElement("li");
+        li.innerText = item + ": " + inventory[item];
+        list.appendChild(li);
+    }
+}
+
+// Disable buttons if out of stock
+function updateButtons() {
+    for (let item in inventory) {
+        let btn = document.getElementById("btn" + item);
+        btn.disabled = inventory[item] <= 0;
+    }
+}
+
+// Initial setup
+updateInventoryDisplay();
+updateButtons();
+</script>
+
+</body>
+</html>]
